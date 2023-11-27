@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <style>
+            body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            margin: 20px;
+            padding: 0;
+        }
+
+        h1 {
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #583672;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            display: inline-block;
+            width: 120px;
+            text-align: center;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .delete-button {
+            padding: 10px;
+            background-color: #ff6347;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 12px;
+            width: 50px;
+            line-height: 1.5;
+            transition: background-color 0.3s ease;
+        }
+
+        .delete-button:hover {
+            background-color: #d50606;
+        }
+
+        .button-container {
+            display: flex;
+            margin-bottom: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            color: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+            color: #fff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+
+        .update-form {
+            margin-top: 20px;
+        }
+
+        form {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        input[type="text"], select {
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #fff;
+            border-radius: 4px;
+        }
+
+        input[type="submit"] {
+            padding: 12px;
+            background-color: #2c2b2b;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #1d1c1c;
+        }
+
+        </style>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Gym Management System</title>
+    </head>
+<body>
+
+<h1>Gym Management System</h1>
+
+
+<!-- Buttons for each table -->
+<div class="button-container">
+    {% for table_name, _ in tables_data.items() %}
+        <form method="get" action="{{ url_for('display_table', table=table_name, role=role) }}">
+            <input type="hidden" name="role" value="{{ role }}">
+            <button type="submit">{{ table_name }}</button>
+        </form>
+    {% endfor %}
+</div>
+
+{% if selected_table_data %}
+    <h2>{{ selected_table_name }}</h2>
+    
+    <!-- Display Table -->
+    <table border="1">
+
+        <tr>
+            {% for column in selected_table_data.columns %}
+                <th>{{ column }}</th>
+            {% endfor %}
+            {% if role == 'admin' %}
+                <th>Actions</th> <!-- Added column for actions -->
+            {% endif %}
+        </tr>
+        {% for row in selected_table_data.rows %}
+            <tr>
+                {% for value in row %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+                {% if role == 'admin' %}
+                    <td>
+                        <!-- Button for Delete action -->
+                        <form action="{{ url_for('handle_data', action='delete', table=selected_table_name, row_id=row[0]) }}" method="post">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <input type="hidden" name="row_id" value="{{ row[0] }}">  <!-- Add this line to send the row_id -->
+                            <button type="submit" class="delete-button">Delete</button>
+                        </form>
+                    </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+    </table>
+
+    {% if role == 'admin' %}
+        <!-- Insert Form -->
+        <h3>Insert Data into {{ selected_table_name }}</h3>
+        <form method="post" action="{{ url_for('handle_data', action='insert', table=selected_table_name) }}">
+            <input type="hidden" name="role" value="{{ role }}">
+            {% for column in selected_table_data.columns %}
+                <label for="{{ column }}">{{ column }}:</label>
+                <input type="text" name="{{ column }}" required><br>
+            {% endfor %}
+            <input type="submit" value="Insert">
+        </form>
+
+        <!-- Update Form -->
+        <div class="update-form">
+            <h3>Update Data in {{ selected_table_name }}</h3>
+            <form method="post" action="{{ url_for('handle_data', action='update', table=selected_table_name) }}">
+                <input type="hidden" name="_method" value="PATCH">
+                <select name="update_id" required>
+                    <option value="" disabled selected>Select {{ selected_table_name }} ID</option>
+                    {% for update_row in selected_table_data.rows %}
+                        <option value="{{ update_row[selected_table_data.primary_key_index] }}">{{ update_row[selected_table_data.primary_key_index] }}</option>
+                    {% endfor %}
+                </select>
+                <br>
+
+                <!-- Checkbox for each column -->
+                {% for column in selected_table_data.columns %}
+                    {% if column != selected_table_data.primary_key %}
+                        <label for="{{ column }}">{{ column }}:</label>
+                        <input type="checkbox" name="columns_to_update[]" value="{{ column }}">
+                        <input type="text" name="{{ column }}" placeholder="{{ column }} (New Value)">
+                        <br>
+                    {% endif %}
+                {% endfor %}
+                <input type="submit" value="Update">
+            </form>
+        </div>
+
+    {% endif %}
+
+{% endif %}
+
+</body>
+</html>
